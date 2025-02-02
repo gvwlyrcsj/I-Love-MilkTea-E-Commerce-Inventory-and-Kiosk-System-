@@ -1,0 +1,217 @@
+<%- include('partials/sidebar') %>
+<style>
+  body {
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    height: 100vh;
+    flex-direction: row;
+    background-color: #f4f6f9;
+  }
+
+  .sidebar {
+    width: 250px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #343a40;
+    color: #fff;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar .nav-link {
+    color: #ddd;
+    margin-bottom: 10px;
+  }
+
+  .sidebar .nav-link:hover {
+    color: #fff;
+    background-color: #495057;
+    border-radius: 4px;
+  }
+
+  .sidebar img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+  }
+
+  .content {
+    margin-left: 250px;
+    padding: 40px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 200px;
+    }
+
+    .content {
+      margin-left: 200px;
+    }
+  }
+
+  h2 {
+    color: #34495e;
+  }
+
+  .btn-primary {
+    background-color: #3498db;
+    border: none;
+  }
+
+  .btn-primary:hover {
+    background-color: #2980b9;
+  }
+
+  /* Table Styling */
+  #ordersTable {
+    font-size: 14px;
+  }
+
+  thead {
+    background-color: #34495e;
+    color: white;
+  }
+
+  tbody tr:hover {
+    background-color: #ecf0f1;
+  }
+
+  .table th,
+  .table td {
+    vertical-align: middle;
+  }
+
+  .table td img {
+    width: 100px;
+    height: auto;
+    border-radius: 5px;
+  }
+
+  .table td .btn {
+    font-size: 14px;
+    padding: 10px 20px;
+  }
+
+  .dataTables_wrapper .dataTables_filter input {
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 14px;
+  }
+
+  .dataTables_wrapper .dataTables_length select {
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 14px;
+  }
+</style>
+    <!-- Main Content -->
+    <div class="content">
+      <header class="p-3 bg-primary text-white">
+        <h1>Report</h1>
+      </header>
+      <form id="reportForm" action="/report/generate" method="POST">
+        <div class="form-group"><br>
+          <label for="reportType">Select Report Type:</label>
+          <select class="form-control" id="reportType" name="reportType" onchange="toggleDateRange()">
+            <option value="daily">Daily Sales</option>
+            <option value="weekly">Weekly Sales</option>
+            <option value="monthly">Monthly Sales</option>
+            <option value="yearly">Yearly Sales</option>
+            <option value="custom">Custom Date Range</option>
+          </select>
+        </div>
+        <div class="form-group" id="customDateRange" style="display: none;">
+          <label for="startDate">Start Date:</label>
+          <input type="date" class="form-control" id="startDate" name="startDate">
+          <label for="endDate">End Date:</label>
+          <input type="date" class="form-control" id="endDate" name="endDate">
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Generate Report</button>
+      </form>
+
+      <% if (rows && rows.length > 0) { %>
+        <h2 class="mt-5 report-heading" style="color: black;">Sales Report Results</h2>
+        <table class="table table-striped" id="reportTable">
+                    <thead class="bg-secondary text-white">
+                <tr>
+                    <th>Date</th>
+                    <th>Order Count</th>
+                    <th>E-Commerce Sales</th>
+                    <th>Kiosk Sales</th>
+                    <th>Total Sale</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% rows.forEach(row => { 
+                    const totalSale = parseFloat(row.total_sale) || 0;
+                    const kTotalSale = parseFloat(row.ktotal_sale) || 0;
+                    const combinedTotal = totalSale + kTotalSale;
+                %>
+                    <tr>
+                        <td><%= row.date %></td>
+                        <td><%= row.order_count %></td>
+                        <td>₱<%= totalSale.toFixed(2) %></td>
+                        <td>₱<%= kTotalSale.toFixed(2) %></td>
+                        <td>₱<%= combinedTotal.toFixed(2) %></td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+        <button class="btn btn-primary mt-3" onclick="printReport()">Print Report</button>
+        <button class="btn btn-success mt-3" onclick="exportToExcel()">Save to Excel</button>
+    <% } else { %>
+        <p>No data available for the selected report type and date range.</p>
+    <% } %>
+    <a href="/report" class="btn btn-secondary mt-3">Back to Report Selection</a>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    function toggleDateRange() {
+      const reportType = document.getElementById('reportType').value;
+      const customDateRange = document.getElementById('customDateRange');
+      customDateRange.style.display = reportType === 'custom' ? 'block' : 'none';
+    }
+
+    function printReport() {
+      const printContents = document.getElementById('reportTable').outerHTML;
+      const originalContents = document.body.innerHTML;
+      document.body.innerHTML = printContents;
+      window.print();
+      document.body.innerHTML = originalContents;
+      window.location.reload(); // Reload the page to restore the original state
+    }
+
+    function exportToExcel() {
+    // Get the table data
+    const table = document.getElementById('reportTable');
+    const workbook = XLSX.utils.table_to_book(table, { sheet: "Sales Report" });
+
+    // Generate an Excel file and download it
+    XLSX.writeFile(workbook, 'Sales_Report.xlsx');
+  }
+
+    document.getElementById('reportForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      fetch(form.action, {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.text())
+      .then(html => {
+        document.body.innerHTML = html;
+      })
+      .catch(error => console.error('Error:', error));
+    });
+  </script>
+</body>
+</html>
